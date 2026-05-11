@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>B99 - NOINE NOINE</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #000;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding-top: 60px;
+      font-family: 'Arial Black', Arial, sans-serif;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    #canvas-area {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #b99-btn {
+      position: relative;
+      z-index: 10;
+      background: #00008B;
+      color: #FFD700;
+      border: none;
+      border-radius: 18px;
+      font-size: 5rem;
+      font-weight: 600;
+      font-family: 'Noto Sans Mono', monospace;
+      letter-spacing: 6px;
+      padding: 28px 72px;
+      cursor: pointer;
+      box-shadow:
+        0 0 0 6px #FFD700,
+        0 12px 48px rgba(0, 0, 139, 0.5),
+        0 4px 0 #00005a;
+      transition: transform 0.08s, box-shadow 0.08s;
+      user-select: none;
+      text-transform: uppercase;
+    }
+
+    #b99-btn:hover {
+      transform: translateY(-3px) scale(1.03);
+      box-shadow:
+        0 0 0 6px #FFD700,
+        0 20px 60px rgba(0, 0, 139, 0.7),
+        0 6px 0 #00005a;
+    }
+
+    #b99-btn:active {
+      transform: translateY(2px) scale(0.97);
+      box-shadow:
+        0 0 0 6px #FFD700,
+        0 4px 20px rgba(0, 0, 139, 0.4),
+        0 1px 0 #00005a;
+    }
+
+    #counter {
+      position: relative;
+      z-index: 10;
+      margin-top: 22px;
+      color: #4A5A8A;
+      font-size: 1rem;
+      font-family: 'Noto Sans Mono', monospace;
+      letter-spacing: 2px;
+      font-weight: 400;
+      opacity: 0.7;
+    }
+
+    #reset-btn {
+      position: fixed;
+      bottom: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      background: transparent;
+      color: #4A5A8A;
+      border: 1px solid #4A5A8A55;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      font-family: 'Noto Sans Mono', monospace;
+      padding: 7px 22px;
+      cursor: pointer;
+      letter-spacing: 1px;
+      opacity: 0.5;
+      transition: opacity 0.2s;
+    }
+    #reset-btn:hover { opacity: 0.9; }
+
+    .noine {
+      position: fixed;
+      z-index: 5;
+      font-family: 'Noto Sans Mono', monospace;
+      font-weight: 500;
+      pointer-events: none;
+      user-select: none;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.7);
+      will-change: transform;
+    }
+  </style>
+</head>
+<body>
+
+  <button id="b99-btn">B99</button>
+  <div id="counter">noines: 0</div>
+
+  <button id="reset-btn">reset</button>
+
+  <script>
+    const btn = document.getElementById('b99-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const counter = document.getElementById('counter');
+
+    const COLORS = ['#FFD700', '#00008B', '#6B6B78', '#4A5A8A', '#FFD700', '#6B6B78'];
+    const SIZES = ['1.2rem', '1.6rem', '2.1rem', '2.6rem', '1rem', '3rem'];
+
+    let noines = [];
+    let total = 0;
+    let animFrame;
+
+    function spawnNoine() {
+      const el = document.createElement('div');
+      el.classList.add('noine');
+      el.textContent = 'noine noine';
+
+      const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+      const size  = SIZES[Math.floor(Math.random() * SIZES.length)];
+      const x = Math.random() * (window.innerWidth - 160);
+
+      el.style.color    = color;
+      el.style.fontSize = size;
+      el.style.left     = x + 'px';
+      el.style.top      = '-60px';
+      el.style.opacity  = '0';
+
+      document.body.appendChild(el);
+
+      // Physics state
+      const obj = {
+        el,
+        x,
+        y: -60,
+        vy: 1 + Math.random() * 2,        // initial downward velocity
+        vx: (Math.random() - 0.5) * 1.5,  // slight horizontal drift
+        gravity: 0.38 + Math.random() * 0.18,
+        bounceY: window.innerHeight - 60 - Math.random() * 80, // floor
+        restitution: 0.38 + Math.random() * 0.25,  // bounciness
+        friction: 0.92,
+        settled: false,
+        opacity: 0,
+        rotation: (Math.random() - 0.5) * 14,
+        vrot: (Math.random() - 0.5) * 0.8,
+      };
+
+      noines.push(obj);
+      total++;
+      counter.textContent = `noines: ${total}`;
+    }
+
+    function tick() {
+      noines.forEach(obj => {
+        if (obj.settled) return;
+
+        // Gravity
+        obj.vy += obj.gravity;
+        obj.y  += obj.vy;
+        obj.x  += obj.vx;
+        obj.vrot *= 0.97;
+        obj.rotation += obj.vrot;
+
+        // Fade in
+        if (obj.opacity < 1) obj.opacity = Math.min(1, obj.opacity + 0.07);
+
+        // Bounce off floor
+        if (obj.y >= obj.bounceY) {
+          obj.y  = obj.bounceY;
+          obj.vy = -obj.vy * obj.restitution;
+          obj.vx *= obj.friction;
+          obj.vrot *= 0.6;
+
+          // Settle if barely moving
+          if (Math.abs(obj.vy) < 0.8) {
+            obj.vy = 0;
+            // slowly drift to rest
+            if (Math.abs(obj.vy) < 0.15) obj.settled = true;
+          }
+        }
+
+        // Wall bounce
+        const elW = obj.el.offsetWidth || 120;
+        if (obj.x < 0) { obj.x = 0; obj.vx *= -0.5; }
+        if (obj.x + elW > window.innerWidth) {
+          obj.x = window.innerWidth - elW;
+          obj.vx *= -0.5;
+        }
+
+        obj.el.style.transform = `translate(${obj.x - parseFloat(obj.el.style.left)}px, ${obj.y}px) rotate(${obj.rotation}deg)`;
+        obj.el.style.opacity   = obj.opacity;
+      });
+
+      animFrame = requestAnimationFrame(tick);
+    }
+
+    btn.addEventListener('click', () => {
+      const count = 1 + Math.floor(Math.random() * 2); // 1-2 per click
+      for (let i = 0; i < count; i++) {
+        setTimeout(spawnNoine, i * 60);
+      }
+    });
+
+    resetBtn.addEventListener('click', () => {
+      noines.forEach(o => o.el.remove());
+      noines = [];
+      total  = 0;
+      counter.textContent = 'noines: 0';
+    });
+
+    tick();
+  </script>
+</body>
+</html>
