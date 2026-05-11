@@ -1,4 +1,4 @@
 # K-nein
-Hey guys first repo!
+B99 fans
 <br>
-tell me what you think!
+Whenever you press the b99 button you get a surprise!
